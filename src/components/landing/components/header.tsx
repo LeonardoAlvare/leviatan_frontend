@@ -21,6 +21,10 @@ export const Header = () => {
       url: "testimonials",
       name: "Testimonios",
     },
+    {
+      url: "dashboard",
+      name: "Dashboard",
+    }
   ];
 
   return (
