@@ -5,6 +5,7 @@ import { FeaturesSection } from "./components/Features_Section";
 import { CallAction } from "./components/Call_Action";
 import { HowWordsSection } from "./components/How_Works_Section";
 import { Header } from "./components/header";
+import { Dashboard } from "./components/Dashboard";
 
 export default function Landing() {
   return (
@@ -14,6 +15,7 @@ export default function Landing() {
       <FeaturesSection />
       <HowWordsSection />
       <TestimonialsSection />
+      <Dashboard />
       <CallAction />
       <Footer isLanding />
     </div>
