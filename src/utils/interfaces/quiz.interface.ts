@@ -6,7 +6,7 @@ export interface Quiz {
         id: number,
         question_text: string,
         correct_option: string,
-        options: string[]
+        options: Array<{id: number, option_text: string}> | string[]
     }>
 }
 

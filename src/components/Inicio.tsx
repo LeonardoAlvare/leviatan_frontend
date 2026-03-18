@@ -95,15 +95,25 @@ export default function Inicio() {
         averageScore: 0,
     });
     const { token } = useAuth();
+    const userString = sessionStorage.getItem("user")
+    let userId: number | null = null
+    if (userString) {
+        try {
+            const userObj = JSON.parse(userString)
+            userId = userObj.user_id ?? null
+        } catch (error) {
+            console.error("Error parsing user from sessionStorage:", error)
+        }
+    }
 
     useEffect(() => {
         const fetchQuickStats = async () => {
             try {
                 const [subjectsRes, statsRes] = await Promise.all([
-                    fetch(`${Enviroment.API_URL}/subject/user`, {
+                    fetch(`${Enviroment.API_URL}/subject/by-user?email=${user?.email}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
-                    fetch(`${Enviroment.API_URL}/statistics/user_statistics`, {
+                    fetch(`${Enviroment.API_URL}/statistics/user/statistics?user=${userId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
                 ]);
@@ -169,6 +179,8 @@ export default function Inicio() {
         },
     ];
 
+    const username = user?.email?.split("@")[0] ?? "Estudiante";
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-violet-50 p-6">
             <div className="max-w-7xl mx-auto">
@@ -180,7 +192,7 @@ export default function Inicio() {
                 >
                     <div className="flex items-center gap-3 mb-2">
                         <h1 className="text-4xl md:text-5xl font-bold text-gray-800">
-                            ¡Hola, {user?.email.split("@")[0] || "Estudiante"}!
+                            ¡Hola, {username}!
                         </h1>
                         <HandIcon className="w-12 h-12 text-yellow-500" />
                     </div>

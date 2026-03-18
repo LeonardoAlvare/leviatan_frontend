@@ -14,13 +14,38 @@ export function StudyPlan({ documentId }: StudyPlanProps) {
     const [isChecking, setIsChecking] = useState<boolean>(true)
     const { token } = useAuth()
 
-    // Verificar si existe un plan de estudio cuando cambia el nivel o el documento
+    const userString = sessionStorage.getItem("user")
+    let userId: number | null = null
+    if (userString) {
+        try {
+            const userObj = JSON.parse(userString)
+            userId = userObj.user_id ?? null
+        } catch (error) {
+            console.error("Error parsing user from sessionStorage:", error)
+        }
+    }
+
+    const normalizeStudyPlan = (raw: any) => {
+        if (!raw) return null
+
+        if (Array.isArray(raw)) {
+            return raw.length > 0 ? raw[0] : null
+        }
+
+        if (raw.studyPlan) {
+            return raw.studyPlan
+        }
+
+        return raw
+    }
+
+
     useEffect(() => {
         const checkStudyPlanExists = async () => {
             setIsChecking(true)
             try {
                 const response = await fetch(
-                    `${Enviroment.API_URL}/study-plans/by-document/${documentId}/${selectedLevel}`,
+                    `${Enviroment.API_URL}/study-plan/find?user=${userId}&document=${documentId}`,
                     {
                         method: "GET",
                         headers: {
@@ -30,9 +55,10 @@ export function StudyPlan({ documentId }: StudyPlanProps) {
                 )
 
                 if (response.ok) {
-                    const plan = await response.json()
-                    console.log("Study plan found:", plan)
-                    setStudyPlan(plan)
+                    const planResponse = await response.json()
+                    const normalizedPlan = normalizeStudyPlan(planResponse)
+                    console.log("Study plan found:", normalizedPlan)
+                    setStudyPlan(normalizedPlan)
                 } else if (response.status === 404) {
                     console.log("Study plan not found for level:", selectedLevel)
                     setStudyPlan(null)
@@ -57,7 +83,7 @@ export function StudyPlan({ documentId }: StudyPlanProps) {
         setIsLoadingStudyPlan(true)
         try {
             console.log("Creating study plan with level:", selectedLevel)
-            const response = await fetch(`${Enviroment.API_URL}/study-plans/create/${documentId}/${selectedLevel}`, {
+            const response = await fetch(`${Enviroment.API_URL}/study-plan/create?document=${documentId}&user=${userId}&level=${selectedLevel}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -77,7 +103,7 @@ export function StudyPlan({ documentId }: StudyPlanProps) {
             console.log("Study plan created successfully:", data)
 
             // Renderizar inmediatamente el plan creado
-            setStudyPlan(data)
+            setStudyPlan(normalizeStudyPlan(data))
             setIsChecking(false)
         } catch (error) {
             console.error("Error creating study plan:", error)

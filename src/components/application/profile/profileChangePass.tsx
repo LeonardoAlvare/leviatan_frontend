@@ -5,8 +5,8 @@ import { Enviroment } from "../../../utils/env/enviroment";
 export default function ProfileChangePass() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    old_password: "",
-    new_password: "",
+    oldPassword: "",
+    newPassword: "",
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -25,17 +25,17 @@ export default function ProfileChangePass() {
   };
 
   const validatePassword = () => {
-    if (formData.new_password.length < 8) {
+    if (formData.newPassword.length < 8) {
       setError("La nueva contraseña debe tener al menos 8 caracteres");
       return false;
     }
 
-    if (formData.new_password !== formData.confirmPassword) {
+    if (formData.newPassword !== formData.confirmPassword) {
       setError("Las contraseñas no coinciden");
       return false;
     }
 
-    if (formData.old_password === formData.new_password) {
+    if (formData.oldPassword === formData.newPassword) {
       setError("La nueva contraseña debe ser diferente a la actual");
       return false;
     }
@@ -52,18 +52,20 @@ export default function ProfileChangePass() {
       return;
     }
 
-    setIsLoading(true);    try {
+    setIsLoading(true);
+    try {
       const token = sessionStorage.getItem("access_token");
-      const response = await fetch(`${Enviroment.API_URL}/user/change_password`, {
-        method: "PUT",
+      const payload = {
+        newPassword: formData.newPassword,
+      };
+
+      const response = await fetch(`${Enviroment.API_URL}/auth/change-password`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify({
-          old_password: formData.old_password,
-          new_password: formData.new_password,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -73,8 +75,8 @@ export default function ProfileChangePass() {
 
       setSuccess("Contraseña cambiada exitosamente");
       setFormData({
-        old_password: "",
-        new_password: "",
+        oldPassword: "",
+        newPassword: "",
         confirmPassword: "",
       });
 
@@ -97,7 +99,7 @@ export default function ProfileChangePass() {
     return { strength: 100, label: "Fuerte", color: "bg-green-500" };
   };
 
-  const passwordStrength = getPasswordStrength(formData.new_password);
+  const passwordStrength = getPasswordStrength(formData.newPassword);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -176,17 +178,17 @@ export default function ProfileChangePass() {
                   <div className="relative floating-label-input">
                     <input
                       className="block w-full px-3 py-2 pr-12 bg-transparent border-b-2 border-gray-200 focus:outline-none focus:ring-0 focus:border-purple-600 peer text-gray-900 placeholder-transparent"
-                      id="old_password"
-                      name="old_password"
+                      id="oldPassword"
+                      name="oldPassword"
                       placeholder="Contraseña Actual"
                       type={showCurrentPassword ? "text" : "password"}
-                      value={formData.old_password}
+                      value={formData.oldPassword}
                       onChange={handleChange}
                       required
                     />
                     <label
                       className="absolute left-3 -top-3.5 text-gray-600 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-sm peer-focus:text-purple-600"
-                      htmlFor="old_password"
+                      htmlFor="oldPassword"
                     >
                       Contraseña Actual
                     </label>
@@ -227,17 +229,17 @@ export default function ProfileChangePass() {
                   <div className="relative floating-label-input">
                     <input
                       className="block w-full px-3 py-2 pr-12 bg-transparent border-b-2 border-gray-200 focus:outline-none focus:ring-0 focus:border-purple-600 peer text-gray-900 placeholder-transparent"
-                      id="new_password"
-                      name="new_password"
+                      id="newPassword"
+                      name="newPassword"
                       placeholder="Nueva Contraseña"
                       type={showNewPassword ? "text" : "password"}
-                      value={formData.new_password}
+                      value={formData.newPassword}
                       onChange={handleChange}
                       required
                     />
                     <label
                       className="absolute left-3 -top-3.5 text-gray-600 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-sm peer-focus:text-purple-600"
-                      htmlFor="new_password"
+                      htmlFor="newPassword"
                     >
                       Nueva Contraseña
                     </label>
@@ -272,7 +274,7 @@ export default function ProfileChangePass() {
                       </svg>
                     )}
                     </button>
-                    {formData.new_password && (
+                    {formData.newPassword && (
                       <div className="mt-3">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-medium text-gray-600">Fortaleza de la contraseña</span>
@@ -349,7 +351,7 @@ export default function ProfileChangePass() {
                       </svg>
                     )}
                     </button>
-                    {formData.confirmPassword && formData.new_password === formData.confirmPassword && (
+                    {formData.confirmPassword && formData.newPassword === formData.confirmPassword && (
                       <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                           <path

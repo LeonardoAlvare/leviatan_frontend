@@ -20,9 +20,16 @@ export function ViewSubject() {
   const [documents, setDocuments] = useState<DocumentR[]>([]);
 
   const { token } = useAuth();
+  const { user } = useAuth();
 
-  const handleViewDocument = (documentId: number) => {
-    sessionStorage.setItem("documentId", String(documentId));
+  const handleViewDocument = (document: DocumentR) => {
+    sessionStorage.setItem("documentId", String(document.id));
+    if (document.file_path) {
+      sessionStorage.setItem("documentFilename", document.file_path);
+    }
+    if (document.title) {
+      sessionStorage.setItem("documentTitle", document.title);
+    }
     navigate("/documents");
   }
   // Crear materia
@@ -32,7 +39,7 @@ export function ViewSubject() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${Enviroment.API_URL}/subject/create`, {
+      const res = await fetch(`${Enviroment.API_URL}/subject/create?email=${user?.email}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -60,7 +67,7 @@ export function ViewSubject() {
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const res = await fetch(`${Enviroment.API_URL}/subject/user`, {
+        const res = await fetch(`${Enviroment.API_URL}/subject/by-user?email=${user?.email}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -83,7 +90,7 @@ export function ViewSubject() {
   const fetchDocumentsBySubject = async (subjectId: number) => {
     try {
       const res = await fetch(
-        `${Enviroment.API_URL}/subject/${subjectId}/documents`,
+        `${Enviroment.API_URL}/subject/documents?id=${subjectId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -92,7 +99,7 @@ export function ViewSubject() {
       if (!res.ok) throw new Error("Error al obtener documentos");
       const data: DocumentR[] = await res.json();
       setDocuments(data);
-      
+
     } catch (err) {
       console.error(err);
     }
@@ -129,7 +136,7 @@ export function ViewSubject() {
                 fetchDocumentsBySubject(Number(s.id));
                 setIsDocsModalOpen(true);
               }}
-              
+
             />
           )}
         </div>
@@ -152,7 +159,7 @@ export function ViewSubject() {
           documents={documents}
           onAddDocument={() =>
             console.log("👉 Aquí abrirías modal de agregar documento")
-          } 
+          }
           onclick={() => navigate("/upload")}
           onViewDocument={handleViewDocument}
         />

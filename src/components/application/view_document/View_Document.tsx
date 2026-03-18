@@ -34,7 +34,7 @@ export function ViewDocument() {
     useEffect(() => {
         const checkSummaryExists = async () => {
             try {
-                const response = await fetch(`${Enviroment.API_URL}/summary/resumen/${documentId}`, {
+                const response = await fetch(`${Enviroment.API_URL}/summary/find?id=${Number(sessionStorage.getItem("summaryId"))}`, {
                     method: "GET",
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -43,6 +43,7 @@ export function ViewDocument() {
                 if (response.ok) {
                     const summary = await response.json()
                     setSummary(summary)
+                    sessionStorage.setItem("summaryId", String(summary.id))
                     setSummaryExists(true)
                 } else if (response.status === 404) {
                     setSummaryExists(false)
@@ -55,7 +56,7 @@ export function ViewDocument() {
 
         const checkFlashcardsExist = async () => {
             try {
-                const response = await fetch(`${Enviroment.API_URL}/cards/flash/${documentId}`, {
+                const response = await fetch(`${Enviroment.API_URL}/flashcard/find?id=${documentId}`, {
                     method: "GET",
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -80,10 +81,17 @@ export function ViewDocument() {
         }
     }, [documentId, token])
 
+    // Limpiar summaryId cuando se cambia de documento o se sale de la ruta
+    useEffect(() => {
+        return () => {
+            sessionStorage.removeItem("summaryId")
+        }
+    }, [documentId])
+
     const handleCreateSummary = async () => {
         setIsLoading(true)
         try {
-            const response = await fetch(`${Enviroment.API_URL}/summary/create/${documentId}`, {
+            const response = await fetch(`${Enviroment.API_URL}/summary/create?document=${documentId}`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -94,7 +102,9 @@ export function ViewDocument() {
             }
             const newSummary = await response.json()
             console.log("New summary created:", newSummary)
+            
             setSummary(newSummary)
+            sessionStorage.setItem("summaryId", String(newSummary.id))
             setSummaryExists(true)
         } catch (error) {
             console.error("Error creating summary:", error)
@@ -107,7 +117,7 @@ export function ViewDocument() {
         setIsLoadingFlashcards(true)
         setFlashcardsExist(null) // Reset state while creating
         try {
-            const response = await fetch(`${Enviroment.API_URL}/cards/flash/create/${documentId}`, {
+            const response = await fetch(`${Enviroment.API_URL}/flashcard/create?document=${documentId}`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -122,7 +132,7 @@ export function ViewDocument() {
             await new Promise(resolve => setTimeout(resolve, 1500))
 
             // Recargar las flashcards desde el servidor
-            const fetchResponse = await fetch(`${Enviroment.API_URL}/cards/flash/${documentId}`, {
+            const fetchResponse = await fetch(`${Enviroment.API_URL}/flashcard/find?id=${documentId}`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${token}`,

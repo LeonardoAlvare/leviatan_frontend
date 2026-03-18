@@ -32,7 +32,7 @@ export function Quiz() {
     useEffect(() => {
         const checkQuizExists = async () => {
             try {
-                const response = await fetch(`${Enviroment.API_URL}/quiz/get_quiz/${documentId}`, {
+                const response = await fetch(`${Enviroment.API_URL}/quiz/find?document=${documentId}`, {
                     method: "GET",
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -61,7 +61,7 @@ export function Quiz() {
         setIsLoadingQuiz(true)
         try {
             const response = await fetch(
-                `${Enviroment.API_URL}/quiz/create/${documentId}`,
+                `${Enviroment.API_URL}/quiz/create?document=${documentId}`,
                 {
                     method: "POST",
                     headers: {
@@ -98,14 +98,12 @@ export function Quiz() {
         const timeTaken = Math.floor((Date.now() - startTime) / 1000)
         if (!userId) return false;
         const payload = {
-            user_id: userId,
-            quiz_id: quiz.id,
             answers: userAnswers,
             time_taken: timeTaken
         }
 
         try {
-            const response = await fetch(`${Enviroment.API_URL}/statistics/record_attempt`, {
+            const response = await fetch(`${Enviroment.API_URL}/statistics/quiz/${quiz.id}/submit?user=${userId}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -114,7 +112,8 @@ export function Quiz() {
                 body: JSON.stringify(payload),
             })
             if (!response.ok) {
-                throw new Error("Error creating quiz attempt")
+                const errorText = await response.text()
+                throw new Error(`Error creating quiz attempt: ${response.status} ${errorText}`)
             }
             console.log("Payload sent:", payload)
             const result = await response.json()
@@ -130,24 +129,27 @@ export function Quiz() {
     
 
     const handleAnswerSelect = (answerIndex: number) => {
-        if (selectedAnswer === null && quiz?.questions) {
-            setSelectedAnswer(answerIndex)
-            setShowExplanation(true)
+    if (selectedAnswer === null && quiz?.questions) {
+        setSelectedAnswer(answerIndex)
+        setShowExplanation(true)
 
-            const currentQuestionData = quiz.questions[currentQuestion]
-            const selectedOption = currentQuestionData?.options[answerIndex]
+        const currentQuestionData = quiz.questions[currentQuestion]
+        const selectedOption = currentQuestionData?.options[answerIndex]
+        
+        // Extraer el texto de la opción (puede ser string u objeto)
+        const selectedOptionText = typeof selectedOption === 'string' ? selectedOption : selectedOption?.option_text || ""
 
-            const newAnswer = {
-                question_id: currentQuestionData.id,
-                selected_option: selectedOption || ""
-            }
-            setUserAnswers(prev => [...prev, newAnswer])
+        const newAnswer = {
+            question_id: currentQuestionData.id,
+            selected_option: selectedOptionText
+        }
+        setUserAnswers(prev => [...prev, newAnswer])
 
-            if (selectedOption && selectedOption === currentQuestionData?.correct_option) {
-                setScore(score + 1)
-            }
+        if (selectedOptionText && selectedOptionText === currentQuestionData?.correct_option) {
+            setScore(score + 1)
         }
     }
+}
 
     const handleNextQuestion = async () => {
         if (quiz?.questions && currentQuestion < quiz.questions.length - 1) {
@@ -383,8 +385,10 @@ export function Quiz() {
 
                                         <div className="space-y-3 mb-6">
                                             {quiz?.questions?.[currentQuestion]?.options?.map((option, index) => {
+                                                // Manejar tanto strings como objetos
+                                                const optionText = typeof option === 'string' ? option : option.option_text
                                                 const isSelected = selectedAnswer === index
-                                                const isCorrect = option === quiz?.questions?.[currentQuestion]?.correct_option
+                                                const isCorrect = optionText === quiz?.questions?.[currentQuestion]?.correct_option
                                                 const showResult = showExplanation
 
                                                 let buttonClass = "w-full p-4 text-left rounded-lg border-2 transition-all duration-200 "
@@ -415,7 +419,7 @@ export function Quiz() {
                                                             <span className="w-6 h-6 rounded-full border-2 border-current mr-3 flex items-center justify-center text-sm font-medium">
                                                                 {String.fromCharCode(65 + index)}
                                                             </span>
-                                                            {option}
+                                                            {optionText}
                                                             {showResult && isCorrect && (
                                                                 <svg
                                                                     className="w-5 h-5 ml-auto text-green-600"

@@ -7,6 +7,7 @@ import type { DocumentResponse } from '../../../utils/interfaces/document.interf
 
 export default function UploadDocument() {
     const [selectedFile, setSelectedFile] = useState<File>();
+    const [title, setTitle] = useState<string>('');
     const [uploading, setUploading] = useState<boolean>(false);
     const [processingStatus, setProcessingStatus] = useState<string>('');
     const [isDragOver, setIsDragOver] = useState<boolean>(false)
@@ -14,6 +15,12 @@ export default function UploadDocument() {
     const { token } = useAuth();
     const navigate = useNavigate();
     const subjectDocumentId = Number(sessionStorage.getItem("subjectCreatedId"))
+    const allowedMimeTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ];
     console.log("ID de la materia para el documento:", subjectDocumentId);
     
     const handleDragOver = (e: React.DragEvent) => {
@@ -32,17 +39,28 @@ export default function UploadDocument() {
         const files = e.dataTransfer.files
         if (files && files.length > 0) {
             const file = files[0]
-            if (file.type === "application/pdf") {
+            if (allowedMimeTypes.includes(file.type)) {
                 setSelectedFile(file)
+                if (!title.trim()) {
+                    setTitle(file.name.replace(/\.[^/.]+$/, ''));
+                }
             } else {
-                alert("Por favor, selecciona solo archivos PDF.")
+                alert("Por favor, selecciona un archivo PDF, DOC, DOCX o PPTX.")
             }
         }
     }
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files.length > 0) {
-            setSelectedFile(event.target.files[0]);
+            const file = event.target.files[0];
+            if (!allowedMimeTypes.includes(file.type)) {
+                alert("Formato no permitido. Usa PDF, DOC, DOCX o PPTX.");
+                return;
+            }
+            setSelectedFile(file);
+            if (!title.trim()) {
+                setTitle(file.name.replace(/\.[^/.]+$/, ''));
+            }
         }
     }
 
@@ -57,11 +75,22 @@ export default function UploadDocument() {
             return;
         }
 
+        if (!Number.isFinite(subjectDocumentId) || subjectDocumentId <= 0) {
+            alert("No se encontró una materia válida para asociar el documento.");
+            return;
+        }
+
+        if (!title.trim()) {
+            alert("El título del documento es obligatorio.");
+            return;
+        }
+
         setUploading(true)
         setUploadProgress(0)
 
         const formData = new FormData();
         formData.append('file', selectedFile);
+        formData.append('title', title.trim());
 
         try {
             const progressInterval = setInterval(() => {
@@ -74,7 +103,7 @@ export default function UploadDocument() {
                 })
             }, 200)
             
-            const res = await fetch(`${Enviroment.API_URL}/documents/uploads/${subjectDocumentId}`, {
+            const res = await fetch(`${Enviroment.API_URL}/document/create?subjectId=${subjectDocumentId}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -86,27 +115,51 @@ export default function UploadDocument() {
             setUploadProgress(100)
 
             if (!res.ok) {
-                throw new Error("Error en la subida del documento");
+                let backendMessage = "Error en la subida del documento";
+                try {
+                    const errorData = await res.json();
+                    if (Array.isArray(errorData?.message)) {
+                        backendMessage = errorData.message.join(', ');
+                    } else if (typeof errorData?.message === 'string') {
+                        backendMessage = errorData.message;
+                    }
+                } catch {
+                    // Keep generic message if response is not JSON.
+                }
+                throw new Error(backendMessage);
             }
 
             setProcessingStatus("Procesando documento... Esto puede tardar unos minutos.");
 
             const data: DocumentResponse = await res.json();
             setProcessingStatus("Documento procesado con éxito.");
-            sessionStorage.setItem('documentId', data.id.toString());
+            const uploadedFilename = data?.saveDocument?.filename;
+            const uploadedTitle = data?.saveDocument?.name;
+            const uploadedId = data?.saveDocument?.id;
+
+            if (uploadedFilename) {
+                sessionStorage.setItem('documentFilename', uploadedFilename);
+            }
+            if (uploadedTitle) {
+                sessionStorage.setItem('documentTitle', uploadedTitle);
+            }
+            if (typeof uploadedId === 'number') {
+                sessionStorage.setItem('documentId', uploadedId.toString());
+            }
             console.log("Documento subido y procesado:", data);
 
             
             setTimeout(() => {
-                if (res.status === 200) {
+                if (res.ok) {
                     navigate('/documents')
                 }
             }, 3000)
 
             setSelectedFile(undefined);
+            setTitle('');
         } catch (error) {
             console.error("Error al subir el documento:", error);
-            setProcessingStatus("Error al subir el documento. Por favor, inténtalo de nuevo.");
+            setProcessingStatus(error instanceof Error ? error.message : "Error al subir el documento. Por favor, inténtalo de nuevo.");
         } finally {
             setUploading(false)
             setSelectedFile(undefined)
@@ -228,10 +281,10 @@ export default function UploadDocument() {
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.5 }}
                             >
-                                Formatos soportados: PDF, DOC, DOCX, TXT
+                                Formatos soportados: PDF, DOC, DOCX, PPTX
                             </motion.p>
 
-                            <input type="file" id="fileInput" accept=".pdf" onChange={handleFileChange} className="hidden" />
+                                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.pptx" onChange={handleFileChange} className="hidden" />
 
                             <motion.label
                                 htmlFor="fileInput"
@@ -268,6 +321,20 @@ export default function UploadDocument() {
                                                 <p className="text-sm text-gray-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                                             </div>
                                         </div>
+                                    </div>
+
+                                    <div className="mb-4 text-left">
+                                        <label htmlFor="document-title" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Titulo del documento
+                                        </label>
+                                        <input
+                                            id="document-title"
+                                            type="text"
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            placeholder="Ej: Apuntes de Algebra"
+                                            className="w-full rounded-lg border border-purple-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        />
                                     </div>
 
                                     <motion.button

@@ -93,7 +93,9 @@ export default function Login() {
           body: JSON.stringify(registerData),
         });
 
+        console.log(registerRes);
         if (!registerRes.ok) throw new Error("Error en el registro");
+
 
         setShowUserCreatedPopup(true);
         setTimeout(() => setShowUserCreatedPopup(false), 3000);

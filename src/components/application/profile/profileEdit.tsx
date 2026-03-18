@@ -30,7 +30,7 @@ export default function ProfileEdit() {
     try {
       setIsFetching(true);
       const token = sessionStorage.getItem("access_token");
-      const response = await fetch(`${Enviroment.API_URL}/user/data`, {
+      const response = await fetch(`${Enviroment.API_URL}/auth/profile`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

@@ -24,14 +24,15 @@ export default function Pdf_view() {
   const { token } = useAuth()
 
   const documentId = Number(sessionStorage.getItem("documentId"))
+  const documentFilename = sessionStorage.getItem("documentFilename")
 
   useEffect(() => {
     let isMounted = true
     let objectUrl: string | null = null
 
     const fetchDocument = async () => {
-      if (!documentId || !token) {
-        setError("Faltan datos de autenticación o documento")
+      if (!token) {
+        setError("Faltan datos de autenticación")
         setIsLoading(false)
         return
       }
@@ -40,7 +41,32 @@ export default function Pdf_view() {
         setIsLoading(true)
         setError(null)
 
-        const response = await fetch(`${Enviroment.API_URL}/documents/view/${documentId}`, {
+        let filename = documentFilename
+        if (!filename && documentId) {
+          const metadataResponse = await fetch(`${Enviroment.API_URL}/document/${documentId}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (metadataResponse.ok) {
+            const metadata = await metadataResponse.json() as { file_path?: string; title?: string }
+            if (metadata.file_path) {
+              filename = metadata.file_path
+              sessionStorage.setItem("documentFilename", metadata.file_path)
+            }
+            if (metadata.title) {
+              sessionStorage.setItem("documentTitle", metadata.title)
+            }
+          }
+        }
+
+        if (!filename) {
+          throw new Error("No se encontro el archivo del documento")
+        }
+
+        const response = await fetch(`${Enviroment.API_URL}/document/file/${encodeURIComponent(filename)}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -81,7 +107,7 @@ export default function Pdf_view() {
         audio.src = ""
       }
     }
-  }, [documentId, token, audio])
+  }, [documentId, documentFilename, token, audio])
 
   const fetchTextToSpeech = async () => {
     if (!documentId || !token) {
@@ -93,7 +119,7 @@ export default function Pdf_view() {
       setAudioLoading(true)
       setAudioError(null)
 
-      const response = await fetch(`${Enviroment.API_URL}/documents/text_to_speech/${documentId}`, {
+      const response = await fetch(`${Enviroment.API_URL}/document/Audio?id=${documentId}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

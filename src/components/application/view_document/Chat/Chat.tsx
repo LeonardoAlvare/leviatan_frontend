@@ -28,6 +28,17 @@ export function Chatbot() {
   const { token } = useAuth()
   const documentId = Number(sessionStorage.getItem("documentId"))
 
+  const userString = sessionStorage.getItem("user")
+    let userId: number | null = null
+    if (userString) {
+        try {
+            const userObj = JSON.parse(userString)
+            userId = userObj.user_id ?? null
+        } catch (error) {
+            console.error("Error parsing user from sessionStorage:", error)
+        }
+    }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -46,7 +57,7 @@ export function Chatbot() {
 
       try {
         const response = await fetch(
-          `${Enviroment.API_URL}/chat/history/${documentId}`,
+          `${Enviroment.API_URL}/chat/history?user=${userId}&document=${documentId}`,
           {
             method: "GET",
             headers: {
@@ -58,11 +69,13 @@ export function Chatbot() {
 
         if (!response.ok) {
           throw new Error("Error al cargar el historial")
-        }        const data = await response.json()
+        }
+        const data = await response.json()
         
         const historyMessages: Message[] = []
+        const historyItems = Array.isArray(data) ? data : (data.history || [])
         
-        const sortedHistory = [...data.history].sort((a: any, b: any) => 
+        const sortedHistory = [...historyItems].sort((a: any, b: any) => 
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         )
         
@@ -106,9 +119,11 @@ export function Chatbot() {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !documentId || !token) return
 
+    const messageToSend = inputValue.trim()
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
-      text: inputValue,
+      text: messageToSend,
       sender: "user",
       timestamp: new Date(),
     }
@@ -119,8 +134,19 @@ export function Chatbot() {
     setError(null)
 
     try {
+      const botMessageId = `bot-stream-${Date.now()}`
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: botMessageId,
+          text: "",
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ])
+
       const response = await fetch(
-        `${Enviroment.API_URL}/chat/send/${documentId}`,
+        `${Enviroment.API_URL}/chat/stream?document=${documentId}&user=${userId}`,
         {
           method: "POST",
           headers: {
@@ -128,7 +154,7 @@ export function Chatbot() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            message: inputValue,
+            message: messageToSend,
           }),
         }
       )
@@ -137,16 +163,32 @@ export function Chatbot() {
         throw new Error("Error al enviar el mensaje")
       }
 
-      const data = await response.json()
-
-      const botMessage: Message = {
-        id: `bot-${data.id}`,
-        text: data.response,
-        sender: "bot",
-        timestamp: new Date(data.timestamp),
+      if (!response.body) {
+        throw new Error("No se recibió stream de respuesta")
       }
 
-      setMessages((prev) => [...prev, botMessage])
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let accumulated = ""
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+
+        accumulated += decoder.decode(value, { stream: true })
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botMessageId
+              ? { ...msg, text: accumulated }
+              : msg,
+          ),
+        )
+      }
+
+      if (!accumulated.trim()) {
+        throw new Error("La respuesta llegó vacía")
+      }
     } catch (err) {
       console.error("Error sending message:", err)
       setError("No se pudo enviar el mensaje. Inténtalo de nuevo.")

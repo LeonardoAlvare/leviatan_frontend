@@ -1,7 +1,11 @@
 export interface DocumentResponse {
-    id: number,
-    title?: string,
+    status: string,
     message: string,
+    saveDocument?: {
+        id?: number,
+        name?: string,
+        filename?: string,
+    }
 }
 
 export interface DocumentR {

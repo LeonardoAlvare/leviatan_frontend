@@ -12,7 +12,7 @@ interface DocumentModalProps {
   }) => void;
   loading?: boolean;
   onclick: () => void;
-  onViewDocument: (documentId: number) => void;
+  onViewDocument: (document: DocumentR) => void;
 }
 
 export function DocumentModal({
@@ -76,7 +76,7 @@ export function DocumentModal({
                       </div>
 
                       <button
-                        onClick={() => onViewDocument?.(doc.id)}
+                        onClick={() => onViewDocument?.(doc)}
                         className="px-5 py-2.5 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 disabled:opacity-50 shadow-md hover:shadow-xl transition-all duration-300 flex-shrink-0"
                       >
                         Ver documento
